@@ -308,6 +308,67 @@
             font-size: 0.9em;
         }
 
+        /* Tag styles */
+        .tags-section {
+            margin: 24px 0;
+        }
+
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .tag {
+            background: #f0f0f0;
+            border-radius: 16px;
+            padding: 6px 12px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+            opacity: 0.6;
+        }
+
+        .tag-remove:hover {
+            opacity: 1;
+        }
+
+        .tag-input-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .tag-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .tag-submit {
+            background: #e60023;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .tag-submit:hover {
+            background: #ad081b;
+        }
+
         @media (max-width: 768px) {
             .navbar {
                 padding: 0 16px;
@@ -370,6 +431,20 @@
                 <h2 id="imageTitle"></h2>
                 <p id="imageDescription"></p>
                 
+                <div class="tags-section">
+                    <h3>Tags</h3>
+                    <div class="tag-input-container">
+                        <input 
+                            type="text" 
+                            class="tag-input" 
+                            placeholder="Add a tag..."
+                            id="tagInput"
+                        >
+                        <button class="tag-submit" onclick="handleTagSubmit()">Add Tag</button>
+                    </div>
+                    <div class="tags-container" id="tagsContainer"></div>
+                </div>
+
                 <div class="comments-section">
                     <h3>Comments</h3>
                     <form class="comment-form" onsubmit="handleCommentSubmit(event)">
@@ -398,8 +473,9 @@
         const searchInput = document.getElementById('search-input');
         const modal = document.getElementById('imageModal');
 
-        // Mock comments data - in a real app, this would come from a backend
+        // Mock data storage - in a real app, this would come from a backend
         const commentsData = new Map();
+        const tagsData = new Map();
 
         function openModal(image) {
             currentImageId = image.id;
@@ -409,12 +485,67 @@
             document.getElementById('imageDescription').textContent = 
                 `A beautiful image ${image.alt.toLowerCase()}`;
             
-            // Load comments for this image
+            // Load comments and tags for this image
             displayComments(currentImageId);
+            displayTags(currentImageId);
             
             modal.style.display = 'block';
             document.body.style.overflow = 'hidden';
+
+            // Focus the tag input
+            document.getElementById('tagInput').focus();
         }
+
+        function handleTagSubmit() {
+            const tagInput = document.getElementById('tagInput');
+            const tag = tagInput.value.trim().toLowerCase();
+            
+            if (!tag) return;
+            
+            // Initialize tags array if it doesn't exist
+            if (!tagsData.has(currentImageId)) {
+                tagsData.set(currentImageId, new Set());
+            }
+            
+            // Add tag if it's not already present
+            const imageTags = tagsData.get(currentImageId);
+            if (!imageTags.has(tag)) {
+                imageTags.add(tag);
+                displayTags(currentImageId);
+            }
+            
+            // Clear input
+            tagInput.value = '';
+            tagInput.focus();
+        }
+
+        function removeTag(tag) {
+            const imageTags = tagsData.get(currentImageId);
+            if (imageTags) {
+                imageTags.delete(tag);
+                displayTags(currentImageId);
+            }
+        }
+
+        function displayTags(imageId) {
+            const tagsContainer = document.getElementById('tagsContainer');
+            const tags = Array.from(tagsData.get(imageId) || []).sort();
+            
+            tagsContainer.innerHTML = tags.map(tag => `
+                <div class="tag">
+                    ${tag}
+                    <span class="tag-remove" onclick="removeTag('${tag}')">&times;</span>
+                </div>
+            `).join('');
+        }
+
+        // Add keypress event listener for tag input
+        document.getElementById('tagInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleTagSubmit();
+            }
+        });
 
         function closeModal() {
             modal.style.display = 'none';
