@@ -180,6 +180,134 @@
             color: #666;
         }
 
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            display: flex;
+            max-width: 1200px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            height: calc(100vh - 80px);
+        }
+
+        .modal-image-container {
+            flex: 2;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+        }
+
+        .modal-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .modal-sidebar {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            padding: 24px;
+            background: white;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 32px;
+            height: 32px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .modal-close:hover {
+            background: #f0f0f0;
+        }
+
+        .comments-section {
+            margin-top: 24px;
+        }
+
+        .comment-form {
+            margin-bottom: 24px;
+        }
+
+        .comment-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 12px;
+        }
+
+        .comment-submit {
+            background: #e60023;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .comment-submit:hover {
+            background: #ad081b;
+        }
+
+        .comments-list {
+            border-top: 1px solid #ddd;
+            padding-top: 16px;
+        }
+
+        .comment {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .comment-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .comment-date {
+            color: #666;
+            font-size: 0.9em;
+        }
+
         @media (max-width: 768px) {
             .navbar {
                 padding: 0 16px;
@@ -191,6 +319,21 @@
 
             .navbar-link span {
                 display: none;
+            }
+
+            .modal-content {
+                flex-direction: column;
+                margin: 0;
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            .modal-sidebar {
+                min-width: 100%;
+            }
+
+            .modal-image-container {
+                height: 50vh;
             }
         }
     </style>
@@ -216,15 +359,117 @@
     <div class="loading" id="loading">Loading images...</div>
     <button id="scroll-top" onclick="scrollToTop()">↑</button>
 
+    <!-- Image Modal -->
+    <div class="modal" id="imageModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-image-container">
+                <img class="modal-image" id="modalImage" src="" alt="">
+            </div>
+            <div class="modal-sidebar">
+                <h2 id="imageTitle"></h2>
+                <p id="imageDescription"></p>
+                
+                <div class="comments-section">
+                    <h3>Comments</h3>
+                    <form class="comment-form" onsubmit="handleCommentSubmit(event)">
+                        <textarea 
+                            class="comment-input" 
+                            placeholder="Add a comment..."
+                            required
+                        ></textarea>
+                        <button type="submit" class="comment-submit">Post Comment</button>
+                    </form>
+                    <div class="comments-list" id="commentsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let page = 1;
         let loading = false;
         let hasMore = true;
         let currentQuery = '';
+        let currentImageId = null;
         const gallery = document.getElementById('gallery');
         const loadingElement = document.getElementById('loading');
         const scrollTopButton = document.getElementById('scroll-top');
         const searchInput = document.getElementById('search-input');
+        const modal = document.getElementById('imageModal');
+
+        // Mock comments data - in a real app, this would come from a backend
+        const commentsData = new Map();
+
+        function openModal(image) {
+            currentImageId = image.id;
+            document.getElementById('modalImage').src = image.url;
+            document.getElementById('modalImage').alt = image.alt;
+            document.getElementById('imageTitle').textContent = image.alt;
+            document.getElementById('imageDescription').textContent = 
+                `A beautiful image ${image.alt.toLowerCase()}`;
+            
+            // Load comments for this image
+            displayComments(currentImageId);
+            
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            currentImageId = null;
+        }
+
+        function displayComments(imageId) {
+            const commentsList = document.getElementById('commentsList');
+            const comments = commentsData.get(imageId) || [];
+            
+            commentsList.innerHTML = comments.map(comment => `
+                <div class="comment">
+                    <div class="comment-header">
+                        <span class="comment-author">Anonymous</span>
+                        <span class="comment-date">${new Date(comment.date).toLocaleDateString()}</span>
+                    </div>
+                    <div class="comment-text">${comment.text}</div>
+                </div>
+            `).join('') || '<p>No comments yet. Be the first to comment!</p>';
+        }
+
+        function handleCommentSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const textarea = form.querySelector('textarea');
+            const comment = {
+                text: textarea.value,
+                date: new Date().toISOString()
+            };
+
+            // Add comment to our mock database
+            if (!commentsData.has(currentImageId)) {
+                commentsData.set(currentImageId, []);
+            }
+            commentsData.get(currentImageId).push(comment);
+
+            // Update the display and reset form
+            displayComments(currentImageId);
+            textarea.value = '';
+        }
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Close modal with escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
 
         async function loadImages(resetGallery = false) {
             if (loading || !hasMore) return;
@@ -269,6 +514,10 @@
                             style="aspect-ratio: ${1/aspectRatio}"
                         >
                     `;
+                    
+                    // Add click handler to open modal
+                    item.addEventListener('click', () => openModal(image));
+                    
                     gallery.appendChild(item);
 
                     // Load high quality image after thumbnail
